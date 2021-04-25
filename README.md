@@ -3,10 +3,10 @@
 ### What is this?
 
 This is CustomController of Kubernetes for berglas secret.
-You can use berglas in Kubernetes to use Custom Webhook.
+You can use berglas in Kubernetes to use [Custom Webhook](https://github.com/GoogleCloudPlatform/berglas/tree/main/examples/kubernetes).
 But, this is a bit invconvinience, because you should grant all ServiceAccount permission of Deployment.
 So, you should set ServiceAccount every time you create new service.
-This Berglas Secret Controller can change all berglas secret once you install it.
+This Berglas Secret Controller can change all berglas secret once you install this.
 
 ### Usage
 
@@ -39,7 +39,7 @@ make run
 Open new terminal window.
 
 ```bash
-# Write ./config/samples/batch_v1alpha1_berglassecret.yaml by your most favorite editor.
+# Write ./config/samples/batch_v1alpha1_berglassecret.yaml by your favorite editor.
 kubectl apply -f ./config/samples/batch_v1alpha1_berglassecret.yaml
 ```
 
