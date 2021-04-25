@@ -1,0 +1,7 @@
+domain: kitagry.github.io
+repo: github.com/kitagry/berglas-secret-controller
+resources:
+- group: batch
+  kind: BerglasSecret
+  version: v1alpha1
+version: "2"
