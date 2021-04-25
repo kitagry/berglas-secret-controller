@@ -19,8 +19,10 @@ package controllers
 import (
 	"context"
 
+	"github.com/GoogleCloudPlatform/berglas/pkg/berglas"
 	"github.com/go-logr/logr"
 	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -28,11 +30,16 @@ import (
 	batchv1alpha1 "github.com/kitagry/berglas-secret-controller/api/v1alpha1"
 )
 
+const (
+	ownerControllerField = ".metadata.controller"
+)
+
 // BerglasSecretReconciler reconciles a BerglasSecret object
 type BerglasSecretReconciler struct {
 	client.Client
-	Log    logr.Logger
-	Scheme *runtime.Scheme
+	Log     logr.Logger
+	Scheme  *runtime.Scheme
+	Berglas *berglas.Client
 }
 
 // +kubebuilder:rbac:groups=batch.kitagry.github.io,resources=berglassecrets,verbs=get;list;watch;create;update;patch;delete
@@ -51,10 +58,31 @@ func (r *BerglasSecretReconciler) Reconcile(req ctrl.Request) (ctrl.Result, erro
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
+	if err := r.reconcileSecret(ctx, req, &berglasSecret); err != nil {
+		logger.Error(err, "failed to reconcile secret")
+		return ctrl.Result{}, err
+	}
+
 	return ctrl.Result{}, nil
 }
 
 func (r *BerglasSecretReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	if err := mgr.GetFieldIndexer().IndexField(&v1.Secret{}, ownerControllerField, func(rawObj runtime.Object) []string {
+		secret := rawObj.(*v1.Secret)
+		owner := metav1.GetControllerOf(secret)
+		if owner == nil {
+			return nil
+		}
+
+		if owner.Kind != "BerglasSecret" {
+			return nil
+		}
+
+		return []string{owner.Name}
+	}); err != nil {
+		return err
+	}
+
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&batchv1alpha1.BerglasSecret{}).
 		Owns(&v1.Secret{}).

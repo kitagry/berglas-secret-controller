@@ -17,6 +17,7 @@ limitations under the License.
 package main
 
 import (
+	"context"
 	"flag"
 	"os"
 
@@ -26,6 +27,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
+	"github.com/GoogleCloudPlatform/berglas/pkg/berglas"
 	batchv1alpha1 "github.com/kitagry/berglas-secret-controller/api/v1alpha1"
 	"github.com/kitagry/berglas-secret-controller/controllers"
 	// +kubebuilder:scaffold:imports
@@ -66,10 +68,17 @@ func main() {
 		os.Exit(1)
 	}
 
+	berglasClient, err := newBerglasClient()
+	if err != nil {
+		setupLog.Error(err, "failed to create berglas client")
+		os.Exit(1)
+	}
+
 	if err = (&controllers.BerglasSecretReconciler{
-		Client: mgr.GetClient(),
-		Log:    ctrl.Log.WithName("controllers").WithName("BerglasSecret"),
-		Scheme: mgr.GetScheme(),
+		Client:  mgr.GetClient(),
+		Log:     ctrl.Log.WithName("controllers").WithName("BerglasSecret"),
+		Scheme:  mgr.GetScheme(),
+		Berglas: berglasClient,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "BerglasSecret")
 		os.Exit(1)
@@ -81,4 +90,12 @@ func main() {
 		setupLog.Error(err, "problem running manager")
 		os.Exit(1)
 	}
+}
+
+func newBerglasClient() (*berglas.Client, error) {
+	berglasClient, err := berglas.New(context.Background())
+	if err != nil {
+		return nil, err
+	}
+	return berglasClient, nil
 }
