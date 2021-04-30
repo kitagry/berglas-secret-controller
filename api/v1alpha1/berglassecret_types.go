@@ -25,10 +25,40 @@ type BerglasSecretSpec struct {
 	Data map[string]string `json:"data"`
 }
 
+type BerglasSecretConditionType string
+
+const (
+	// Available means Secret which is related with BerglasSecret was created.
+	BerglasSecretAvailable BerglasSecretConditionType = "Available"
+	// Failure is added in a BerglasSecret when berglas cannot resolve berglas schema secret.
+	BerglasSecretFailure BerglasSecretConditionType = "Failure"
+)
+
+type BerglasSecretCondition struct {
+	// Type of berglas secret condition.
+	Type BerglasSecretConditionType `json:"type"`
+	// Status of the condition, one of True, False, Unknown.
+	Status metav1.ConditionStatus `json:"status"`
+	// (brief) machine readable reason for the condition's last transition.
+	// +optional
+	Reason string `json:"reason,omitempty"`
+	// Human readable message indicating details about last transition.
+	// +optional
+	Message string `json:"message,omitempty"`
+}
+
 // BerglasSecretStatus defines the observed state of BerglasSecret
-type BerglasSecretStatus struct{}
+type BerglasSecretStatus struct {
+	//+patchMergeKey=type
+	//+patchStrategy=merge
+	//+listType=map
+	//+listMapKey=type
+	Conditions []BerglasSecretCondition `json:"conditions,omitempty"`
+}
 
 // +kubebuilder:object:root=true
+// +kubebuilder:subresource:status
+// +kubebuilder:printcolumn:name="STATUS",type="string",JSONPath=".status.conditions[-1].type"
 
 // BerglasSecret is the Schema for the berglassecrets API
 type BerglasSecret struct {
