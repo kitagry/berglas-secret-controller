@@ -60,6 +60,26 @@ func (r *BerglasSecretReconciler) Reconcile(req ctrl.Request) (ctrl.Result, erro
 
 	if err := r.reconcileSecret(ctx, req, &berglasSecret); err != nil {
 		logger.Error(err, "failed to reconcile secret")
+		setCondition(&berglasSecret.Status, batchv1alpha1.BerglasSecretCondition{
+			Type:    batchv1alpha1.BerglasSecretFailure,
+			Status:  metav1.ConditionFalse,
+			Reason:  err.Error(),
+			Message: "Failed to reconcile secret resource",
+		})
+		stErr := r.Status().Update(ctx, &berglasSecret)
+		if stErr != nil {
+			logger.Error(err, "failed to update status")
+		}
+		return ctrl.Result{}, err
+	}
+
+	setCondition(&berglasSecret.Status, batchv1alpha1.BerglasSecretCondition{
+		Type:   batchv1alpha1.BerglasSecretAvailable,
+		Status: metav1.ConditionTrue,
+	})
+	err := r.Status().Update(ctx, &berglasSecret)
+	if err != nil {
+		logger.Error(err, "failed to update status")
 		return ctrl.Result{}, err
 	}
 
