@@ -23,4 +23,6 @@ jobs:
         go mod download
 
     - name: Test
-      run: go test -v ./...
+      run: |
+         curl -L https://github.com/kubernetes-sigs/kubebuilder/releases/download/v2.3.2/kubebuilder_2.3.2_$(go env GOOS)_$(go env GOARCH).tar.gz | sudo tar zx -C /usr/local/kubebuilder
+         go test -v ./...
