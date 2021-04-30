@@ -19,7 +19,8 @@ func setCondition(status *batchv1alpha1.BerglasSecretStatus, newCondition batchv
 }
 
 func findCondition(conditions []batchv1alpha1.BerglasSecretCondition, conditionType batchv1alpha1.BerglasSecretConditionType) *batchv1alpha1.BerglasSecretCondition {
-	for _, c := range conditions {
+	for i := range conditions {
+		c := conditions[i]
 		if c.Type == conditionType {
 			return &c
 		}
