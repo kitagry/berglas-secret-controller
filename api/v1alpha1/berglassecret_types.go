@@ -35,10 +35,7 @@ const (
 )
 
 type BerglasSecretCondition struct {
-	// Type of row condition. The only defined value is 'Completed' indicating that the
-	// object this row represents has reached a completed state and may be given less visual
-	// priority than other rows. Clients are not required to honor any conditions but should
-	// be consistent where possible about handling the conditions.
+	// Type of berglas secret condition.
 	Type BerglasSecretConditionType `json:"type"`
 	// Status of the condition, one of True, False, Unknown.
 	Status metav1.ConditionStatus `json:"status"`
