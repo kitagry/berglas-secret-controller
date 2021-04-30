@@ -32,4 +32,4 @@ jobs:
           push: true
           tags: |
             ghcr.io/${{ github.repository }}:latest
-            ghcr.io/${{ github.repository }}:${{ steps.get_tag.outputs.TAG }}
+            ghcr.io/${{ github.repository }}:${{ github.ref }}
