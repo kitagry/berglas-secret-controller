@@ -30,9 +30,6 @@ type BerglasSecretConditionType string
 const (
 	// Available means Secret which is related with BerglasSecret was created.
 	BerglasSecretAvailable BerglasSecretConditionType = "Available"
-	// Progressing means BerglasSecret is progressing. Progress for a BerglasSecret
-	// considered when a data is resolved by berglas.
-	BerglasSecretProgressing BerglasSecretConditionType = "Progressing"
 	// Failure is added in a BerglasSecret when berglas cannot resolve berglas schema secret.
 	BerglasSecretFailure BerglasSecretConditionType = "Failure"
 )
@@ -64,7 +61,7 @@ type BerglasSecretStatus struct {
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
-// +kubebuilder:printcolumn:name="READY",type="string",JSONPath=".status.conditions[?(@.type=='Available')].status"
+// +kubebuilder:printcolumn:name="STATUS",type="string",JSONPath=".status.conditions[-1].type"
 
 // BerglasSecret is the Schema for the berglassecrets API
 type BerglasSecret struct {
