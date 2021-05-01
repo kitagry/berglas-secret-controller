@@ -25,6 +25,10 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.CR_PAT }}
 
+      - name: Set tag
+        id: vars
+        run: echo ::set-output name=tag::${GITHUB_REF#refs/*/}
+
       - name: Build and push
         uses: docker/build-push-action@v2
         with:
@@ -32,4 +36,4 @@ jobs:
           push: true
           tags: |
             ghcr.io/${{ github.repository }}:latest
-            ghcr.io/${{ github.repository }}:${{ github.ref }}
+            ghcr.io/${{ github.repository }}:${{ steps.vars.outputs.tag }}
