@@ -47,8 +47,7 @@ type BerglasSecretReconciler struct {
 // +kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups="",resources=secrets/status,verbs=get
 
-func (r *BerglasSecretReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
-	ctx := context.Background()
+func (r *BerglasSecretReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := r.Log.WithValues("berglassecret", req.NamespacedName)
 
 	// your logic here
@@ -86,8 +85,8 @@ func (r *BerglasSecretReconciler) Reconcile(req ctrl.Request) (ctrl.Result, erro
 	return ctrl.Result{}, nil
 }
 
-func (r *BerglasSecretReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	if err := mgr.GetFieldIndexer().IndexField(&v1.Secret{}, ownerControllerField, func(rawObj runtime.Object) []string {
+func (r *BerglasSecretReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Manager) error {
+	if err := mgr.GetFieldIndexer().IndexField(ctx, &v1.Secret{}, ownerControllerField, func(rawObj client.Object) []string {
 		secret := rawObj.(*v1.Secret)
 		owner := metav1.GetControllerOf(secret)
 		if owner == nil {
