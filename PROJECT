@@ -1,7 +1,15 @@
 domain: kitagry.github.io
+layout:
+- go.kubebuilder.io/v2
+projectName: berglas-secret-controller
 repo: github.com/kitagry/berglas-secret-controller
 resources:
-- group: batch
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: kitagry.github.io
+  group: batch
   kind: BerglasSecret
   version: v1alpha1
-version: "2"
+version: "3"
