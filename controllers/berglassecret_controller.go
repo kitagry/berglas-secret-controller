@@ -19,7 +19,6 @@ package controllers
 import (
 	"context"
 
-	"github.com/GoogleCloudPlatform/berglas/pkg/berglas"
 	"github.com/go-logr/logr"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -34,12 +33,16 @@ const (
 	ownerControllerField = ".metadata.controller"
 )
 
+type berglasClient interface {
+	Resolve(context.Context, string) ([]byte, error)
+}
+
 // BerglasSecretReconciler reconciles a BerglasSecret object
 type BerglasSecretReconciler struct {
 	client.Client
 	Log     logr.Logger
 	Scheme  *runtime.Scheme
-	Berglas *berglas.Client
+	Berglas berglasClient
 }
 
 // +kubebuilder:rbac:groups=batch.kitagry.github.io,resources=berglassecrets,verbs=get;list;watch;create;update;patch;delete
