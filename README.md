@@ -1,8 +1,7 @@
-[![Test](https://github.com/kitagry/berglas-secret-controller/actions/workflows/test.yaml/badge.svg)](https://github.com/kitagry/berglas-secret-controller/actions/workflows/test.yaml)
-
-[![GitHub release](https://img.shields.io/github/v/tag/kitagry/berglas-secret-controller.svg?sort=semver)](https://github.com/kitagry/berglas-secret-controller/releases)
-
 ## Berglas Secret Controller
+
+[![Test](https://github.com/kitagry/berglas-secret-controller/actions/workflows/test.yaml/badge.svg)](https://github.com/kitagry/berglas-secret-controller/actions/workflows/test.yaml)
+[![GitHub release](https://img.shields.io/github/v/tag/kitagry/berglas-secret-controller.svg?sort=semver)](https://github.com/kitagry/berglas-secret-controller/releases)
 
 ### What is this?
 
@@ -13,6 +12,8 @@ So, you should set ServiceAccount every time you create new service.
 This Berglas Secret Controller can change all berglas secret once you install this.
 
 ### Usage
+
+You can use [Docker image](ghcr.io/kitagry/berglas-secret-controller).
 
 TODO
 
