@@ -1,5 +1,7 @@
 [![Test](https://github.com/kitagry/berglas-secret-controller/actions/workflows/test.yaml/badge.svg)](https://github.com/kitagry/berglas-secret-controller/actions/workflows/test.yaml)
 
+[![GitHub release](https://img.shields.io/github/v/tag/kitagry/berglas-secret-controller.svg?sort=semver)](https://github.com/kitagry/berglas-secret-controller/releases)
+
 ## Berglas Secret Controller
 
 ### What is this?
