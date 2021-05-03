@@ -1,3 +1,5 @@
+[![Test](https://github.com/kitagry/berglas-secret-controller/actions/workflows/test.yaml/badge.svg)](https://github.com/kitagry/berglas-secret-controller/actions/workflows/test.yaml)
+
 ## Berglas Secret Controller
 
 ### What is this?
