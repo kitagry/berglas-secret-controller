@@ -3,6 +3,7 @@
 [![Test](https://github.com/kitagry/berglas-secret-controller/actions/workflows/test.yaml/badge.svg)](https://github.com/kitagry/berglas-secret-controller/actions/workflows/test.yaml)
 [![GitHub release](https://img.shields.io/github/v/tag/kitagry/berglas-secret-controller.svg?sort=semver)](https://github.com/kitagry/berglas-secret-controller/releases)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![Coverage Status](https://coveralls.io/repos/github/kitagry/berglas-secret-controller/badge.svg?branch=main)](https://coveralls.io/github/kitagry/berglas-secret-controller?branch=main)
 
 ### What is this?
 
