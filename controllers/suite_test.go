@@ -137,7 +137,7 @@ var _ = Describe("Create BerglasSecret", func() {
 				},
 			}
 			Expect(k8sClient.Create(ctx, berglasSecret)).Should(Succeed())
-			time.Sleep(time.Second * 5)
+			time.Sleep(time.Second * 2)
 
 			berglasSecretLookupKey := types.NamespacedName{Name: berglasSecretName, Namespace: berglasSecretNamespace}
 			createdBerglasSecret := &batchv1alpha1.BerglasSecret{}
@@ -169,6 +169,7 @@ var _ = Describe("Create BerglasSecret", func() {
 				},
 			}
 			Expect(k8sClient.Update(ctx, createdBerglasSecret)).Should(Succeed())
+			time.Sleep(time.Second * 2)
 
 			updatedBerglasSecret := &batchv1alpha1.BerglasSecret{}
 			Eventually(func() bool {
