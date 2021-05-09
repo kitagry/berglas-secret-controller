@@ -118,6 +118,7 @@ var _ = Describe("Create BerglasSecret", func() {
 	Context("When creating BerglasSecret", func() {
 		It("Should create Secret", func() {
 			By("By creating a new BerglasSecret")
+			berglasSecretName := berglasSecretName + "-test1"
 			ctx := context.Background()
 			berglasSecret := &batchv1alpha1.BerglasSecret{
 				TypeMeta: metav1.TypeMeta{
@@ -200,6 +201,57 @@ var _ = Describe("Create BerglasSecret", func() {
 				return err == nil
 			}, timeout, interval).Should(BeFalse())
 			Expect(deletedSecret).Should(BeNil())
+		})
+	})
+
+	Context("When same name secret already exists", func() {
+		It("Should make berglasSecret status BerglasSecretFailure", func() {
+			By("By creating a secret")
+			berglasSecretName := berglasSecretName + "-test2"
+			ctx := context.Background()
+			secret := &v1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      berglasSecretName,
+					Namespace: berglasSecretNamespace,
+				},
+			}
+			Expect(k8sClient.Create(ctx, secret)).Should(Succeed())
+			time.Sleep(time.Second * 2)
+
+			By("By creating a berglasSecret")
+			berglasSecret := &batchv1alpha1.BerglasSecret{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "batch.kitagry.github.io/v1alpha1",
+					Kind:       "BerglasSecret",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      berglasSecretName,
+					Namespace: berglasSecretNamespace,
+				},
+				Spec: batchv1alpha1.BerglasSecretSpec{
+					Data: map[string]string{
+						"test":  "berglas://test/test",
+						"test2": "unresolved",
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, berglasSecret)).Should(Succeed())
+			time.Sleep(time.Second * 2)
+
+			By("By getting a berglasSecret")
+			berglasSecretLookupKey := types.NamespacedName{Name: berglasSecretName, Namespace: berglasSecretNamespace}
+			createdBerglasSecret := &batchv1alpha1.BerglasSecret{}
+
+			Eventually(func() bool {
+				err := k8sClient.Get(ctx, berglasSecretLookupKey, createdBerglasSecret)
+				return err == nil
+			}, timeout, interval).Should(BeTrue())
+			Expect(createdBerglasSecret.Spec.Data).Should(Equal(map[string]string{
+				"test":  "berglas://test/test",
+				"test2": "unresolved",
+			}))
+
+			Expect(createdBerglasSecret.Status.Conditions[len(createdBerglasSecret.Status.Conditions)-1].Type).Should(Equal(batchv1alpha1.BerglasSecretFailure))
 		})
 	})
 })
