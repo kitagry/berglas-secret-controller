@@ -111,8 +111,7 @@ var _ = Describe("Create BerglasSecret", func() {
 		berglasSecretName      = "berglas-secret"
 		berglasSecretNamespace = "default"
 
-		timeout = time.Second * 10
-		// duration = time.Second * 10
+		timeout  = time.Second * 10
 		interval = time.Millisecond * 10
 	)
 
@@ -190,6 +189,17 @@ var _ = Describe("Create BerglasSecret", func() {
 				"test":  []uint8("resolved"),
 				"test3": []uint8("new secret"),
 			}))
+
+			By("By deleting berglasSecret")
+			Expect(k8sClient.Delete(ctx, createdBerglasSecret)).Should(Succeed())
+			time.Sleep(time.Second * 2)
+
+			var deletedSecret *v1.Secret
+			Eventually(func() bool {
+				err := k8sClient.Get(ctx, berglasSecretLookupKey, deletedSecret)
+				return err == nil
+			}, timeout, interval).Should(BeFalse())
+			Expect(deletedSecret).Should(BeNil())
 		})
 	})
 })
