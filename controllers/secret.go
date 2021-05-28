@@ -94,9 +94,8 @@ func (r *BerglasSecretReconciler) updateSecret(ctx context.Context, req ctrl.Req
 		return nil
 	}
 
-	// When we update both a berglasSecret and a pod which volume the berglasSecret,
-	// the pod might volume secret which is not updated yet.
-	// So, we delete secret firstly, and then create new secret.
+	// When we update both a berglasSecret and a pod which use the berglasSecret to populate environment variables,
+	// the pod might use secret which is not updated yet. So, we delete secret firstly, and then create new secret.
 	err := r.Delete(ctx, &secret)
 	if err != nil {
 		return fmt.Errorf("failed to update secret in the step of deleting old secret: %w", err)
