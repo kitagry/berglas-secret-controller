@@ -94,24 +94,14 @@ func (r *BerglasSecretReconciler) updateSecret(ctx context.Context, req ctrl.Req
 		return nil
 	}
 
-	newSecretData, err := r.resolveBerglasSchemas(ctx, bs.Spec.Data)
+	// When we update both a berglasSecret and a pod which volume the berglasSecret,
+	// the pod might volume secret which is not updated yet.
+	// So, we delete secret firstly, and then create new secret.
+	err := r.Delete(ctx, &secret)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to delete secret: %w", err)
 	}
-
-	newAnnotationData, err := json.Marshal(bs.Spec.Data)
-	if err != nil {
-		return err
-	}
-
-	secret.StringData = newSecretData
-	secret.Data = nil
-	secret.Annotations[secretAnnotationKey] = string(newAnnotationData)
-	if err := r.Update(ctx, &secret); err != nil {
-		return err
-	}
-
-	return nil
+	return r.createSecret(ctx, req, bs)
 }
 
 func isChanged(v, u map[string]string) bool {
