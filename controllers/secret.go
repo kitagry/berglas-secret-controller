@@ -99,7 +99,7 @@ func (r *BerglasSecretReconciler) updateSecret(ctx context.Context, req ctrl.Req
 	// So, we delete secret firstly, and then create new secret.
 	err := r.Delete(ctx, &secret)
 	if err != nil {
-		return fmt.Errorf("failed to delete secret: %w", err)
+		return fmt.Errorf("failed to update secret in the step of deleting old secret: %w", err)
 	}
 	return r.createSecret(ctx, req, bs)
 }
