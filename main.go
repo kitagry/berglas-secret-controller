@@ -19,6 +19,7 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"os"
 
 	"k8s.io/apimachinery/pkg/runtime"
@@ -63,7 +64,7 @@ func main() {
 	zapConfig := zapdriver.NewProductionConfig()
 	logger, err := zapConfig.Build(opts.ZapOpts...)
 	if err != nil {
-		setupLog.Error(err, "unable to start manager")
+		fmt.Fprintf(os.Stderr, `{"severity": "ERROR", "message": "unable to create zapdriver: %v"}`, err)
 		os.Exit(1)
 	}
 	ctrl.SetLogger(zapr.NewLogger(logger))
