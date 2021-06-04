@@ -19,6 +19,7 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"os"
 
 	"k8s.io/apimachinery/pkg/runtime"
@@ -28,6 +29,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	"github.com/GoogleCloudPlatform/berglas/pkg/berglas"
+	"github.com/blendle/zapdriver"
+	"github.com/go-logr/zapr"
 	batchv1alpha1 "github.com/kitagry/berglas-secret-controller/api/v1alpha1"
 	"github.com/kitagry/berglas-secret-controller/controllers"
 	// +kubebuilder:scaffold:imports
@@ -58,7 +61,13 @@ func main() {
 	opts.BindFlags(flag.CommandLine)
 	flag.Parse()
 
-	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
+	zapConfig := zapdriver.NewProductionConfig()
+	logger, err := zapConfig.Build(opts.ZapOpts...)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, `{"severity": "ERROR", "message": "unable to create zapdriver: %v"}`, err)
+		os.Exit(1)
+	}
+	ctrl.SetLogger(zapr.NewLogger(logger))
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:             scheme,

@@ -85,6 +85,7 @@ func (r *BerglasSecretReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		return ctrl.Result{}, err
 	}
 
+	logger.Info("success to reconcile")
 	return ctrl.Result{}, nil
 }
 
