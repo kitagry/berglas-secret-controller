@@ -120,46 +120,20 @@ var _ = Describe("Create BerglasSecret", func() {
 			By("By creating a new BerglasSecret")
 			berglasSecretName := berglasSecretName + "-test1"
 			ctx := context.Background()
-			berglasSecret := &batchv1alpha1.BerglasSecret{
-				TypeMeta: metav1.TypeMeta{
-					APIVersion: "batch.kitagry.github.io/v1alpha1",
-					Kind:       "BerglasSecret",
-				},
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      berglasSecretName,
-					Namespace: berglasSecretNamespace,
-				},
-				Spec: batchv1alpha1.BerglasSecretSpec{
-					Data: map[string]string{
-						"test":  "berglas://test/test",
-						"test2": "unresolved",
-					},
-				},
-			}
-			Expect(k8sClient.Create(ctx, berglasSecret)).Should(Succeed())
-			time.Sleep(time.Second * 2)
-
 			berglasSecretLookupKey := types.NamespacedName{Name: berglasSecretName, Namespace: berglasSecretNamespace}
-			createdBerglasSecret := &batchv1alpha1.BerglasSecret{}
-
-			Eventually(func() bool {
-				err := k8sClient.Get(ctx, berglasSecretLookupKey, createdBerglasSecret)
-				return err == nil
-			}, timeout, interval).Should(BeTrue())
-			Expect(createdBerglasSecret.Spec.Data).Should(Equal(map[string]string{
-				"test":  "berglas://test/test",
-				"test2": "unresolved",
-			}))
-
-			createdSecret := &v1.Secret{}
-			Eventually(func() bool {
-				err := k8sClient.Get(ctx, berglasSecretLookupKey, createdSecret)
-				return err == nil
-			}, timeout, interval).Should(BeTrue())
-			Expect(createdSecret.Data).Should(Equal(map[string][]uint8{
-				"test":  []uint8("resolved"),
-				"test2": []uint8("unresolved"),
-			}))
+			createdBerglasSecret := createAndCheckBerglasSecret(ctx, CreateBerglasSecretParams{
+				NamespacedName: berglasSecretLookupKey,
+				BerglasData: map[string]string{
+					"test":  "berglas://test/test",
+					"test2": "unresolved",
+				},
+				ExpectSecretData: map[string][]uint8{
+					"test":  []uint8("resolved"),
+					"test2": []uint8("unresolved"),
+				},
+				timeout:  timeout,
+				interval: interval,
+			})
 
 			By("By updating berglasSecret")
 			createdBerglasSecret.Spec = batchv1alpha1.BerglasSecretSpec{
@@ -254,7 +228,99 @@ var _ = Describe("Create BerglasSecret", func() {
 			Expect(createdBerglasSecret.Status.Conditions[len(createdBerglasSecret.Status.Conditions)-1].Type).Should(Equal(batchv1alpha1.BerglasSecretFailure))
 		})
 	})
+
+	Context("When same name berglassecrets (but other namespace) already exists", func() {
+		It("Should create secrets", func() {
+			By("By creating berglas secret")
+			berglasSecretName := berglasSecretName + "-test3"
+			ctx := context.Background()
+			berglasSecretLookupKey := types.NamespacedName{Name: berglasSecretName, Namespace: berglasSecretNamespace}
+			createAndCheckBerglasSecret(ctx, CreateBerglasSecretParams{
+				NamespacedName: berglasSecretLookupKey,
+				BerglasData: map[string]string{
+					"test":  "berglas://test/test",
+					"test2": "unresolved",
+				},
+				ExpectSecretData: map[string][]uint8{
+					"test":  []uint8("resolved"),
+					"test2": []uint8("unresolved"),
+				},
+				timeout:  timeout,
+				interval: interval,
+			})
+
+			otherNamespace := "other-" + berglasSecretNamespace
+			By("creating other namespace")
+			otherNamespaceResource := &v1.Namespace{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: otherNamespace,
+				},
+			}
+			Expect(k8sClient.Create(ctx, otherNamespaceResource)).Should(Succeed())
+
+			By("By creating other namespace berglas secret")
+			createAndCheckBerglasSecret(ctx, CreateBerglasSecretParams{
+				NamespacedName: types.NamespacedName{
+					Name:      berglasSecretName,
+					Namespace: otherNamespace,
+				},
+				BerglasData: map[string]string{
+					"test2": "unresolved",
+					"test3": "berglas://test/test",
+				},
+				ExpectSecretData: map[string][]uint8{
+					"test2": []uint8("unresolved"),
+					"test3": []uint8("resolved"),
+				},
+				timeout:  timeout,
+				interval: interval,
+			})
+		})
+	})
 })
+
+type CreateBerglasSecretParams struct {
+	NamespacedName    types.NamespacedName
+	BerglasData       map[string]string
+	ExpectSecretData  map[string][]uint8
+	timeout, interval time.Duration
+}
+
+// create berglasSecret and validate secrets
+func createAndCheckBerglasSecret(ctx context.Context, params CreateBerglasSecretParams) *batchv1alpha1.BerglasSecret {
+	berglasSecret := &batchv1alpha1.BerglasSecret{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "batch.kitagry.github.io/v1alpha1",
+			Kind:       "BerglasSecret",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      params.NamespacedName.Name,
+			Namespace: params.NamespacedName.Namespace,
+		},
+		Spec: batchv1alpha1.BerglasSecretSpec{
+			Data: params.BerglasData,
+		},
+	}
+	Expect(k8sClient.Create(ctx, berglasSecret)).Should(Succeed())
+	time.Sleep(time.Second * 2)
+
+	createdBerglasSecret := &batchv1alpha1.BerglasSecret{}
+
+	Eventually(func() bool {
+		err := k8sClient.Get(ctx, params.NamespacedName, createdBerglasSecret)
+		return err == nil
+	}, params.timeout, params.interval).Should(BeTrue())
+	Expect(createdBerglasSecret.Spec.Data).Should(Equal(params.BerglasData))
+
+	createdSecret := &v1.Secret{}
+	Eventually(func() bool {
+		err := k8sClient.Get(ctx, params.NamespacedName, createdSecret)
+		return err == nil
+	}, params.timeout, params.interval).Should(BeTrue())
+	Expect(createdSecret.Data).Should(Equal(params.ExpectSecretData))
+
+	return createdBerglasSecret
+}
 
 type dummyBerglasClient struct{}
 
