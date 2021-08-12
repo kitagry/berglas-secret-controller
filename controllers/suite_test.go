@@ -121,7 +121,7 @@ var _ = Describe("Create BerglasSecret", func() {
 			berglasSecretName := berglasSecretName + "-test1"
 			ctx := context.Background()
 			berglasSecretLookupKey := types.NamespacedName{Name: berglasSecretName, Namespace: berglasSecretNamespace}
-			createdBerglasSecret := createBerglasSecret(ctx, CreateBerglasSecretParams{
+			createdBerglasSecret := createAndCheckBerglasSecret(ctx, CreateBerglasSecretParams{
 				NamespacedName: berglasSecretLookupKey,
 				BerglasData: map[string]string{
 					"test":  "berglas://test/test",
@@ -235,7 +235,7 @@ var _ = Describe("Create BerglasSecret", func() {
 			berglasSecretName := berglasSecretName + "-test3"
 			ctx := context.Background()
 			berglasSecretLookupKey := types.NamespacedName{Name: berglasSecretName, Namespace: berglasSecretNamespace}
-			createBerglasSecret(ctx, CreateBerglasSecretParams{
+			createAndCheckBerglasSecret(ctx, CreateBerglasSecretParams{
 				NamespacedName: berglasSecretLookupKey,
 				BerglasData: map[string]string{
 					"test":  "berglas://test/test",
@@ -259,7 +259,7 @@ var _ = Describe("Create BerglasSecret", func() {
 			Expect(k8sClient.Create(ctx, otherNamespaceResource)).Should(Succeed())
 
 			By("By creating other namespace berglas secret")
-			createBerglasSecret(ctx, CreateBerglasSecretParams{
+			createAndCheckBerglasSecret(ctx, CreateBerglasSecretParams{
 				NamespacedName: types.NamespacedName{
 					Name:      berglasSecretName,
 					Namespace: otherNamespace,
@@ -287,7 +287,7 @@ type CreateBerglasSecretParams struct {
 }
 
 // create berglasSecret and validate secrets
-func createBerglasSecret(ctx context.Context, params CreateBerglasSecretParams) *batchv1alpha1.BerglasSecret {
+func createAndCheckBerglasSecret(ctx context.Context, params CreateBerglasSecretParams) *batchv1alpha1.BerglasSecret {
 	berglasSecret := &batchv1alpha1.BerglasSecret{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "batch.kitagry.github.io/v1alpha1",
