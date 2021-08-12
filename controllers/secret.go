@@ -8,9 +8,9 @@ import (
 	"github.com/GoogleCloudPlatform/berglas/pkg/berglas"
 	batchv1alpha1 "github.com/kitagry/berglas-secret-controller/api/v1alpha1"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
@@ -18,15 +18,15 @@ const (
 )
 
 func (r *BerglasSecretReconciler) reconcileSecret(ctx context.Context, req ctrl.Request, bs *batchv1alpha1.BerglasSecret) error {
-	var secrets v1.SecretList
-	if err := r.List(ctx, &secrets, client.MatchingFields(map[string]string{ownerControllerField: req.Name})); err != nil {
+	var secret v1.Secret
+	err := r.Get(ctx, req.NamespacedName, &secret)
+	if errors.IsNotFound(err) {
+		return r.createSecret(ctx, req, bs)
+	} else if err != nil {
 		return err
 	}
 
-	if len(secrets.Items) == 0 {
-		return r.createSecret(ctx, req, bs)
-	}
-	return r.updateSecret(ctx, req, bs, &secrets)
+	return r.updateSecret(ctx, req, bs, &secret)
 }
 
 func (r *BerglasSecretReconciler) createSecret(ctx context.Context, req ctrl.Request, bs *batchv1alpha1.BerglasSecret) error {
@@ -78,12 +78,7 @@ func (r *BerglasSecretReconciler) resolveBerglasSchemas(ctx context.Context, dat
 	return result, nil
 }
 
-func (r *BerglasSecretReconciler) updateSecret(ctx context.Context, req ctrl.Request, bs *batchv1alpha1.BerglasSecret, secrets *v1.SecretList) error {
-	if len(secrets.Items) > 1 {
-		return fmt.Errorf("owned secrets should be one item, but got %d", len(secrets.Items))
-	}
-
-	secret := secrets.Items[0]
+func (r *BerglasSecretReconciler) updateSecret(ctx context.Context, req ctrl.Request, bs *batchv1alpha1.BerglasSecret, secret *v1.Secret) error {
 	anntationDataStr := secret.Annotations[secretAnnotationKey]
 	var annotationData map[string]string
 	if err := json.Unmarshal([]byte(anntationDataStr), &annotationData); err != nil {
@@ -96,7 +91,7 @@ func (r *BerglasSecretReconciler) updateSecret(ctx context.Context, req ctrl.Req
 
 	// When we update both a berglasSecret and a pod which use the berglasSecret to populate environment variables,
 	// the pod might use secret which is not updated yet. So, we delete secret firstly, and then create new secret.
-	err := r.Delete(ctx, &secret)
+	err := r.Delete(ctx, secret)
 	if err != nil {
 		return fmt.Errorf("failed to update secret in the step of deleting old secret: %w", err)
 	}
