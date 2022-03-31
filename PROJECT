@@ -11,5 +11,9 @@ resources:
   domain: kitagry.github.io
   group: batch
   kind: BerglasSecret
+  path: github.com/kitagry/berglas-secret-controller/api/v1alpha1
   version: v1alpha1
+  webhooks:
+    validation: true
+    webhookVersion: v1beta1
 version: "3"

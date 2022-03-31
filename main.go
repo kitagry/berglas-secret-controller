@@ -31,6 +31,7 @@ import (
 	"github.com/GoogleCloudPlatform/berglas/pkg/berglas"
 	"github.com/blendle/zapdriver"
 	"github.com/go-logr/zapr"
+
 	batchv1alpha1 "github.com/kitagry/berglas-secret-controller/api/v1alpha1"
 	"github.com/kitagry/berglas-secret-controller/controllers"
 	// +kubebuilder:scaffold:imports
@@ -51,10 +52,12 @@ func init() {
 func main() {
 	var metricsAddr string
 	var enableLeaderElection bool
+	var enableWebhook bool
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
 	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
+	flag.BoolVar(&enableWebhook, "enable-webhook", false, "Enable webhook for custom resource.")
 	opts := zap.Options{
 		Development: true,
 	}
@@ -95,6 +98,12 @@ func main() {
 	}).SetupWithManager(context.Background(), mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "BerglasSecret")
 		os.Exit(1)
+	}
+	if enableWebhook {
+		if err = (&batchv1alpha1.BerglasSecret{}).SetupWebhookWithManager(mgr); err != nil {
+			setupLog.Error(err, "unable to create webhook", "webhook", "BerglasSecret")
+			os.Exit(1)
+		}
 	}
 	// +kubebuilder:scaffold:builder
 
