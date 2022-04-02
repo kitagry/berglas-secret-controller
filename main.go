@@ -23,6 +23,7 @@ import (
 	"os"
 
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -31,10 +32,20 @@ import (
 	"github.com/GoogleCloudPlatform/berglas/pkg/berglas"
 	"github.com/blendle/zapdriver"
 	"github.com/go-logr/zapr"
+	"github.com/open-policy-agent/cert-controller/pkg/rotator"
 
 	batchv1alpha1 "github.com/kitagry/berglas-secret-controller/api/v1alpha1"
 	"github.com/kitagry/berglas-secret-controller/controllers"
 	// +kubebuilder:scaffold:imports
+)
+
+const (
+	secretName     = "berglas-secret-controller-cert"
+	caName         = "berglas-secret-controller-ca"
+	caOrganization = "berglas-secret-controller"
+
+	// VwhName is the metadata.name of the Gatekeeper ValidatingWebhookConfiguration.
+	VwhName = "berglas-secret-validating-webhook-configuration"
 )
 
 var (
@@ -58,6 +69,8 @@ func main() {
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
 	flag.BoolVar(&enableWebhook, "enable-webhook", false, "Enable webhook for custom resource.")
+	certDir := flag.String("cert-dir", "/certs", "The directory where certs are stored, defaults to /certs")
+	certServiceName := flag.String("cert-service-name", "berglas-secret-controller-webhook-service", "The service name used to generate the TLS cert's hostname. Defaults to gatekeeper-webhook-service")
 	opts := zap.Options{
 		Development: true,
 	}
@@ -76,6 +89,7 @@ func main() {
 		Scheme:             scheme,
 		MetricsBindAddress: metricsAddr,
 		Port:               9443,
+		CertDir:            *certDir,
 		LeaderElection:     enableLeaderElection,
 		LeaderElectionID:   "bbb146c0.kitagry.github.io",
 	})
@@ -100,6 +114,31 @@ func main() {
 		os.Exit(1)
 	}
 	if enableWebhook {
+		setupLog.Info("setting up cert rotation")
+		webhooks := []rotator.WebhookInfo{
+			{
+				Name: VwhName,
+				Type: rotator.Validating,
+			},
+		}
+		setupFinished := make(chan struct{})
+		namespace := os.Getenv("POD_NAMESPACE")
+		if err := rotator.AddRotator(mgr, &rotator.CertRotator{
+			SecretKey: types.NamespacedName{
+				Namespace: namespace,
+				Name:      secretName,
+			},
+			CertDir:        *certDir,
+			CAName:         caName,
+			CAOrganization: caOrganization,
+			DNSName:        fmt.Sprintf("%s.%s.svc", *certServiceName, namespace),
+			IsReady:        setupFinished,
+			Webhooks:       webhooks,
+		}); err != nil {
+			setupLog.Error(err, "unable to set up cert rotation")
+			os.Exit(1)
+		}
+
 		if err = (&batchv1alpha1.BerglasSecret{}).SetupWebhookWithManager(mgr); err != nil {
 			setupLog.Error(err, "unable to create webhook", "webhook", "BerglasSecret")
 			os.Exit(1)
