@@ -1,6 +1,6 @@
 module github.com/kitagry/berglas-secret-controller
 
-go 1.17
+go 1.23
 
 require (
 	github.com/GoogleCloudPlatform/berglas v0.5.3
