@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"runtime"
+	"sync"
 	"testing"
 	"time"
 
@@ -139,6 +140,11 @@ var _ = Describe("Create BerglasSecret", func() {
 			berglasSecretName := berglasSecretName + "-test1"
 			ctx := context.Background()
 			berglasSecretLookupKey := types.NamespacedName{Name: berglasSecretName, Namespace: berglasSecretNamespace}
+			unlock := setResolveFunc(func(ctx context.Context, s string) ([]byte, error) {
+				Expect(s).Should(Equal("berglas://test/test"))
+				return []byte("resolved"), nil
+			})
+			defer unlock()
 			createdBerglasSecret := createAndCheckBerglasSecret(ctx, CreateBerglasSecretParams{
 				NamespacedName: berglasSecretLookupKey,
 				BerglasData: map[string]string{
@@ -211,6 +217,10 @@ var _ = Describe("Create BerglasSecret", func() {
 			time.Sleep(time.Second * 2)
 
 			By("By creating a berglasSecret")
+			unlock := setResolveFunc(func(ctx context.Context, s string) ([]byte, error) {
+				return []byte("resolved"), nil
+			})
+			defer unlock()
 			berglasSecret := &batchv1alpha1.BerglasSecret{
 				TypeMeta: metav1.TypeMeta{
 					APIVersion: "batch.kitagry.github.io/v1alpha1",
@@ -253,6 +263,10 @@ var _ = Describe("Create BerglasSecret", func() {
 			berglasSecretName := berglasSecretName + "-test3"
 			ctx := context.Background()
 			berglasSecretLookupKey := types.NamespacedName{Name: berglasSecretName, Namespace: berglasSecretNamespace}
+			unlock := setResolveFunc(func(ctx context.Context, s string) ([]byte, error) {
+				return []byte("resolved"), nil
+			})
+			defer unlock()
 			createAndCheckBerglasSecret(ctx, CreateBerglasSecretParams{
 				NamespacedName: berglasSecretLookupKey,
 				BerglasData: map[string]string{
@@ -342,6 +356,19 @@ func createAndCheckBerglasSecret(ctx context.Context, params CreateBerglasSecret
 
 type dummyBerglasClient struct{}
 
+var (
+	berglasFunc func(ctx context.Context, s string) ([]byte, error) = func(ctx context.Context, s string) ([]byte, error) { return nil, nil }
+	mux         sync.Mutex
+)
+
 func (*dummyBerglasClient) Resolve(ctx context.Context, s string) ([]byte, error) {
-	return []byte("resolved"), nil
+	return berglasFunc(ctx, s)
+}
+
+func setResolveFunc(f func(context.Context, string) ([]byte, error)) func() {
+	mux.Lock()
+	berglasFunc = f
+	return func() {
+		mux.Unlock()
+	}
 }
