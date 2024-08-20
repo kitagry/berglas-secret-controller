@@ -21,6 +21,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 )
 
@@ -107,6 +108,11 @@ func (in *BerglasSecretSpec) DeepCopyInto(out *BerglasSecretSpec) {
 		for key, val := range *in {
 			(*out)[key] = val
 		}
+	}
+	if in.RefreshInterval != nil {
+		in, out := &in.RefreshInterval, &out.RefreshInterval
+		*out = new(v1.Duration)
+		**out = **in
 	}
 }
 

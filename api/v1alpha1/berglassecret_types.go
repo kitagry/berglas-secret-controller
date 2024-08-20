@@ -22,7 +22,11 @@ import (
 
 // BerglasSecretSpec defines the desired state of BerglasSecret
 type BerglasSecretSpec struct {
+	// Data is a map of key value pairs that will be stored in Secret.
 	Data map[string]string `json:"data"`
+
+	// RefreshInterval is the time interval to refresh the secret.
+	RefreshInterval *metav1.Duration `json:"refreshIntervalSeconds,omitempty"`
 }
 
 type BerglasSecretConditionType string

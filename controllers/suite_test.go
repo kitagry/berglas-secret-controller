@@ -55,6 +55,9 @@ var (
 )
 
 func TestControllers(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test in short mode.")
+	}
 	RegisterFailHandler(Fail)
 
 	RunSpecs(t, "Controller Suite")
@@ -140,9 +143,11 @@ var _ = Describe("Create BerglasSecret", func() {
 			berglasSecretName := berglasSecretName + "-test1"
 			ctx := context.Background()
 			berglasSecretLookupKey := types.NamespacedName{Name: berglasSecretName, Namespace: berglasSecretNamespace}
-			unlock := setResolveFunc(func(ctx context.Context, s string) ([]byte, error) {
+			unlock := setBerglasFunc(func(ctx context.Context, s string) ([]byte, error) {
 				Expect(s).Should(Equal("berglas://test/test"))
 				return []byte("resolved"), nil
+			}, func(ctx context.Context, s string) (string, error) {
+				return "version", nil
 			})
 			defer unlock()
 			createdBerglasSecret := createAndCheckBerglasSecret(ctx, CreateBerglasSecretParams{
@@ -217,8 +222,10 @@ var _ = Describe("Create BerglasSecret", func() {
 			time.Sleep(time.Second * 2)
 
 			By("By creating a berglasSecret")
-			unlock := setResolveFunc(func(ctx context.Context, s string) ([]byte, error) {
+			unlock := setBerglasFunc(func(ctx context.Context, s string) ([]byte, error) {
 				return []byte("resolved"), nil
+			}, func(ctx context.Context, s string) (string, error) {
+				return "version", nil
 			})
 			defer unlock()
 			berglasSecret := &batchv1alpha1.BerglasSecret{
@@ -263,8 +270,10 @@ var _ = Describe("Create BerglasSecret", func() {
 			berglasSecretName := berglasSecretName + "-test3"
 			ctx := context.Background()
 			berglasSecretLookupKey := types.NamespacedName{Name: berglasSecretName, Namespace: berglasSecretNamespace}
-			unlock := setResolveFunc(func(ctx context.Context, s string) ([]byte, error) {
+			unlock := setBerglasFunc(func(ctx context.Context, s string) ([]byte, error) {
 				return []byte("resolved"), nil
+			}, func(ctx context.Context, s string) (string, error) {
+				return "version", nil
 			})
 			defer unlock()
 			createAndCheckBerglasSecret(ctx, CreateBerglasSecretParams{
@@ -307,6 +316,57 @@ var _ = Describe("Create BerglasSecret", func() {
 				timeout:  timeout,
 				interval: interval,
 			})
+		})
+	})
+
+	Context("When secret will be changed", func() {
+		It("Should refresh BerglasSecret after IntervalRefresh", func() {
+			By("By creating a berglasSecret")
+			berglasSecretName := berglasSecretName + "-test4"
+			ctx := context.Background()
+			unlock := setBerglasFunc(func(ctx context.Context, s string) ([]byte, error) {
+				return []byte("resolved"), nil
+			}, func(ctx context.Context, s string) (string, error) {
+				return "version", nil
+			})
+			berglasSecret := &batchv1alpha1.BerglasSecret{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "batch.kitagry.github.io/v1alpha1",
+					Kind:       "BerglasSecret",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      berglasSecretName,
+					Namespace: berglasSecretNamespace,
+				},
+				Spec: batchv1alpha1.BerglasSecretSpec{
+					Data: map[string]string{
+						"test": "berglas://test/test",
+					},
+					RefreshInterval: toPtr(metav1.Duration{Duration: time.Second * 1}),
+				},
+			}
+			Expect(k8sClient.Create(ctx, berglasSecret)).Should(Succeed())
+			unlock()
+
+			By("By getting a berglasSecret")
+			unlock = setBerglasFunc(func(ctx context.Context, s string) ([]byte, error) {
+				return []byte("resolved2"), nil // updated resolved secret
+			}, func(ctx context.Context, s string) (string, error) {
+				return "version2", nil // updated version
+			})
+			defer unlock()
+			// wait for refresh interval
+			time.Sleep(time.Second * 2)
+
+			berglasSecretLookupKey := types.NamespacedName{Name: berglasSecretName, Namespace: berglasSecretNamespace}
+			updatedSecret := &v1.Secret{}
+			Eventually(func() bool {
+				err := k8sClient.Get(ctx, berglasSecretLookupKey, updatedSecret)
+				return err == nil
+			}, timeout, interval).Should(BeTrue())
+			Expect(updatedSecret.Data).Should(Equal(map[string][]uint8{
+				"test": []uint8("resolved2"),
+			}))
 		})
 	})
 })
@@ -357,18 +417,28 @@ func createAndCheckBerglasSecret(ctx context.Context, params CreateBerglasSecret
 type dummyBerglasClient struct{}
 
 var (
-	berglasFunc func(ctx context.Context, s string) ([]byte, error) = func(ctx context.Context, s string) ([]byte, error) { return nil, nil }
+	resolveFunc func(ctx context.Context, s string) ([]byte, error) = func(ctx context.Context, s string) ([]byte, error) { return nil, nil }
+	versionFunc func(ctx context.Context, s string) (string, error) = func(ctx context.Context, s string) (string, error) { return "", nil }
 	mux         sync.Mutex
 )
 
 func (*dummyBerglasClient) Resolve(ctx context.Context, s string) ([]byte, error) {
-	return berglasFunc(ctx, s)
+	return resolveFunc(ctx, s)
 }
 
-func setResolveFunc(f func(context.Context, string) ([]byte, error)) func() {
+func (*dummyBerglasClient) Version(ctx context.Context, s string) (string, error) {
+	return versionFunc(ctx, s)
+}
+
+func setBerglasFunc(rFunc func(context.Context, string) ([]byte, error), pFunc func(context.Context, string) (string, error)) func() {
 	mux.Lock()
-	berglasFunc = f
+	resolveFunc = rFunc
+	versionFunc = pFunc
 	return func() {
 		mux.Unlock()
 	}
+}
+
+func toPtr[T any](v T) *T {
+	return &v
 }

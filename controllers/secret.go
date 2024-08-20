@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"maps"
 
 	"github.com/GoogleCloudPlatform/berglas/pkg/berglas"
 	batchv1alpha1 "github.com/kitagry/berglas-secret-controller/api/v1alpha1"
@@ -15,6 +16,7 @@ import (
 
 const (
 	secretAnnotationKey = "kitagry.github.io/berglasSecret"
+	secretVersionKey    = "kitagry.github.io/berglasSecretVersion"
 )
 
 func (r *BerglasSecretReconciler) reconcileSecret(ctx context.Context, req ctrl.Request, bs *batchv1alpha1.BerglasSecret) error {
@@ -35,7 +37,17 @@ func (r *BerglasSecretReconciler) createSecret(ctx context.Context, req ctrl.Req
 		return err
 	}
 
-	annotationData, err := json.Marshal(bs.Spec.Data)
+	annotationDataJSON, err := json.Marshal(bs.Spec.Data)
+	if err != nil {
+		return err
+	}
+
+	versionData, err := r.createVersionData(ctx, bs)
+	if err != nil {
+		return fmt.Errorf("failed to create version data: %w", err)
+	}
+
+	versionDataJSON, err := json.Marshal(versionData)
 	if err != nil {
 		return err
 	}
@@ -45,7 +57,8 @@ func (r *BerglasSecretReconciler) createSecret(ctx context.Context, req ctrl.Req
 			Name:      req.Name,
 			Namespace: req.Namespace,
 			Annotations: map[string]string{
-				secretAnnotationKey: string(annotationData),
+				secretAnnotationKey: string(annotationDataJSON),
+				secretVersionKey:    string(versionDataJSON),
 			},
 		},
 		StringData: data,
@@ -79,39 +92,71 @@ func (r *BerglasSecretReconciler) resolveBerglasSchemas(ctx context.Context, dat
 }
 
 func (r *BerglasSecretReconciler) updateSecret(ctx context.Context, req ctrl.Request, bs *batchv1alpha1.BerglasSecret, secret *v1.Secret) error {
-	anntationDataStr := secret.Annotations[secretAnnotationKey]
-	var annotationData map[string]string
-	if err := json.Unmarshal([]byte(anntationDataStr), &annotationData); err != nil {
-		return fmt.Errorf("failed to get annotation data: %w", err)
+	isChanged, err := r.isChanged(ctx, bs, secret)
+	if err != nil {
+		return err
 	}
-
-	if !isChanged(annotationData, bs.Spec.Data) {
+	if !isChanged {
 		return nil
 	}
 
 	// When we update both a berglasSecret and a pod which use the berglasSecret to populate environment variables,
 	// the pod might use secret which is not updated yet. So, we delete secret firstly, and then create new secret.
-	err := r.Delete(ctx, secret)
+	err = r.Delete(ctx, secret)
 	if err != nil {
 		return fmt.Errorf("failed to update secret in the step of deleting old secret: %w", err)
 	}
 	return r.createSecret(ctx, req, bs)
 }
 
-func isChanged(v, u map[string]string) bool {
-	if len(v) != len(u) {
-		return true
+func (r *BerglasSecretReconciler) createVersionData(ctx context.Context, bs *batchv1alpha1.BerglasSecret) (map[string]string, error) {
+	result := make(map[string]string, len(bs.Spec.Data))
+	for key, value := range bs.Spec.Data {
+		ref, err := berglas.ParseReference(value)
+		if err != nil {
+			result[key] = ""
+			continue
+		}
+		v, err := r.Berglas.Version(ctx, ref.String())
+		if err != nil {
+			return nil, err
+		}
+		result[key] = v
+	}
+	return result, nil
+}
+
+func (r *BerglasSecretReconciler) isChanged(ctx context.Context, bs *batchv1alpha1.BerglasSecret, secret *v1.Secret) (bool, error) {
+	annotationDataStr := secret.Annotations[secretAnnotationKey]
+	var annotationData map[string]string
+	if err := json.Unmarshal([]byte(annotationDataStr), &annotationData); err != nil {
+		return false, fmt.Errorf("failed to get annotation data: %w", err)
 	}
 
-	for key, vValue := range v {
-		uValue, ok := u[key]
-		if !ok {
-			return true
-		}
+	if !maps.Equal(annotationData, bs.Spec.Data) {
+		return true, nil
+	}
 
-		if vValue != uValue {
-			return true
+	// This is compatible with the previous version of the controller.
+	versionDataStr := secret.Annotations[secretVersionKey]
+	if versionDataStr == "" {
+		return true, nil
+	}
+
+	var versionData map[string]string
+	if err := json.Unmarshal([]byte(versionDataStr), &versionData); err != nil {
+		return false, fmt.Errorf("failed to get version data: %w", err)
+	}
+
+	currentVersionData, err := r.createVersionData(ctx, bs)
+	if err != nil {
+		return false, err
+	}
+	for key, value := range currentVersionData {
+		if versionData[key] != value {
+			return true, nil
 		}
 	}
-	return false
+
+	return false, nil
 }
