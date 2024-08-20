@@ -18,6 +18,7 @@ package controllers
 
 import (
 	"context"
+	"time"
 
 	"github.com/go-logr/logr"
 	v1 "k8s.io/api/core/v1"
@@ -31,10 +32,13 @@ import (
 
 const (
 	ownerControllerField = ".metadata.controller"
+
+	defaultRefreshInterval = 10 * time.Minute
 )
 
 type berglasClient interface {
 	Resolve(context.Context, string) ([]byte, error)
+	Version(context.Context, string) (string, error)
 }
 
 // BerglasSecretReconciler reconciles a BerglasSecret object
@@ -60,6 +64,9 @@ func (r *BerglasSecretReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
+	result := ctrl.Result{
+		RequeueAfter: getOrDefault(berglasSecret.Spec.RefreshInterval, metav1.Duration{Duration: defaultRefreshInterval}).Duration,
+	}
 	if err := r.reconcileSecret(ctx, req, &berglasSecret); err != nil {
 		logger.Error(err, "failed to reconcile secret")
 		setCondition(&berglasSecret.Status, batchv1alpha1.BerglasSecretCondition{
@@ -72,7 +79,7 @@ func (r *BerglasSecretReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		if stErr != nil {
 			logger.Error(err, "failed to update status")
 		}
-		return ctrl.Result{}, err
+		return result, err
 	}
 
 	setCondition(&berglasSecret.Status, batchv1alpha1.BerglasSecretCondition{
@@ -82,11 +89,11 @@ func (r *BerglasSecretReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	err := r.Status().Update(ctx, &berglasSecret)
 	if err != nil {
 		logger.Error(err, "failed to update status")
-		return ctrl.Result{}, err
+		return result, err
 	}
 
 	logger.Info("success to reconcile")
-	return ctrl.Result{}, nil
+	return result, nil
 }
 
 func (r *BerglasSecretReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Manager) error {
@@ -110,4 +117,11 @@ func (r *BerglasSecretReconciler) SetupWithManager(ctx context.Context, mgr ctrl
 		For(&batchv1alpha1.BerglasSecret{}).
 		Owns(&v1.Secret{}).
 		Complete(r)
+}
+
+func getOrDefault[T any](t *T, defaultValue T) T {
+	if t == nil {
+		return defaultValue
+	}
+	return *t
 }

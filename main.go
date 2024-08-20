@@ -29,7 +29,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
-	"github.com/GoogleCloudPlatform/berglas/pkg/berglas"
 	"github.com/blendle/zapdriver"
 	"github.com/go-logr/zapr"
 	batchv1alpha1 "github.com/kitagry/berglas-secret-controller/api/v1alpha1"
@@ -83,7 +82,8 @@ func main() {
 		os.Exit(1)
 	}
 
-	berglasClient, err := newBerglasClient()
+	ctx := context.Background()
+	berglasClient, err := newBerglasClient(ctx)
 	if err != nil {
 		setupLog.Error(err, "failed to create berglas client")
 		os.Exit(1)
@@ -94,7 +94,7 @@ func main() {
 		Log:     ctrl.Log.WithName("controllers").WithName("BerglasSecret"),
 		Scheme:  mgr.GetScheme(),
 		Berglas: berglasClient,
-	}).SetupWithManager(context.Background(), mgr); err != nil {
+	}).SetupWithManager(ctx, mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "BerglasSecret")
 		os.Exit(1)
 	}
@@ -105,12 +105,4 @@ func main() {
 		setupLog.Error(err, "problem running manager")
 		os.Exit(1)
 	}
-}
-
-func newBerglasClient() (*berglas.Client, error) {
-	berglasClient, err := berglas.New(context.Background())
-	if err != nil {
-		return nil, err
-	}
-	return berglasClient, nil
 }

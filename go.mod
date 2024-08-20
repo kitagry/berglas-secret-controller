@@ -3,12 +3,15 @@ module github.com/kitagry/berglas-secret-controller
 go 1.23
 
 require (
+	cloud.google.com/go/secretmanager v1.13.6
+	cloud.google.com/go/storage v1.43.0
 	github.com/GoogleCloudPlatform/berglas v1.0.3
 	github.com/blendle/zapdriver v1.3.1
 	github.com/go-logr/logr v1.4.2
 	github.com/go-logr/zapr v1.3.0
 	github.com/onsi/ginkgo/v2 v2.20.0
 	github.com/onsi/gomega v1.34.1
+	go.uber.org/mock v0.4.0
 	k8s.io/api v0.31.0
 	k8s.io/apimachinery v0.31.0
 	k8s.io/client-go v0.31.0
@@ -23,8 +26,6 @@ require (
 	cloud.google.com/go/iam v1.1.13 // indirect
 	cloud.google.com/go/kms v1.18.5 // indirect
 	cloud.google.com/go/longrunning v0.5.12 // indirect
-	cloud.google.com/go/secretmanager v1.13.6 // indirect
-	cloud.google.com/go/storage v1.43.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
