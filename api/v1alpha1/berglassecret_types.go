@@ -26,7 +26,7 @@ type BerglasSecretSpec struct {
 	Data map[string]string `json:"data"`
 
 	// RefreshInterval is the time interval to refresh the secret.
-	RefreshInterval *metav1.Duration `json:"refreshIntervalSeconds,omitempty"`
+	RefreshInterval *metav1.Duration `json:"refreshInterval,omitempty"`
 }
 
 type BerglasSecretConditionType string
