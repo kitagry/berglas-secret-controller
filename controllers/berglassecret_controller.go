@@ -64,9 +64,6 @@ func (r *BerglasSecretReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	result := ctrl.Result{
-		RequeueAfter: getOrDefault(berglasSecret.Spec.RefreshInterval, metav1.Duration{Duration: defaultRefreshInterval}).Duration,
-	}
 	if err := r.reconcileSecret(ctx, req, &berglasSecret); err != nil {
 		logger.Error(err, "failed to reconcile secret")
 		setCondition(&berglasSecret.Status, batchv1alpha1.BerglasSecretCondition{
@@ -79,7 +76,7 @@ func (r *BerglasSecretReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		if stErr != nil {
 			logger.Error(err, "failed to update status")
 		}
-		return result, err
+		return ctrl.Result{}, err
 	}
 
 	setCondition(&berglasSecret.Status, batchv1alpha1.BerglasSecretCondition{
@@ -89,11 +86,13 @@ func (r *BerglasSecretReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	err := r.Status().Update(ctx, &berglasSecret)
 	if err != nil {
 		logger.Error(err, "failed to update status")
-		return result, err
+		return ctrl.Result{}, err
 	}
 
 	logger.Info("success to reconcile")
-	return result, nil
+	return ctrl.Result{
+		RequeueAfter: getOrDefault(berglasSecret.Spec.RefreshInterval, metav1.Duration{Duration: defaultRefreshInterval}).Duration,
+	}, nil
 }
 
 func (r *BerglasSecretReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Manager) error {
