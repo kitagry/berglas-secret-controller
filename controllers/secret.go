@@ -3,13 +3,15 @@ package controllers
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"maps"
+	"time"
 
 	"github.com/GoogleCloudPlatform/berglas/pkg/berglas"
 	batchv1alpha1 "github.com/kitagry/berglas-secret-controller/api/v1alpha1"
 	v1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 )
@@ -17,12 +19,14 @@ import (
 const (
 	secretAnnotationKey = "kitagry.github.io/berglasSecret"
 	secretVersionKey    = "kitagry.github.io/berglasSecretVersion"
+
+	reconcileRetryCount = 3
 )
 
 func (r *BerglasSecretReconciler) reconcileSecret(ctx context.Context, req ctrl.Request, bs *batchv1alpha1.BerglasSecret) error {
 	var secret v1.Secret
 	err := r.Get(ctx, req.NamespacedName, &secret)
-	if errors.IsNotFound(err) {
+	if k8serrors.IsNotFound(err) {
 		return r.createSecret(ctx, req, bs)
 	} else if err != nil {
 		return err
@@ -82,10 +86,30 @@ func (r *BerglasSecretReconciler) resolveBerglasSchemas(ctx context.Context, dat
 			continue
 		}
 
-		plaintext, err := r.Berglas.Resolve(ctx, ref.String())
+		var plaintext []byte
+		for range reconcileRetryCount {
+			plaintext, err = r.Berglas.Resolve(ctx, ref.String())
+			if err == nil {
+				break
+			}
+
+			// timeout error is retryable
+			var netErr interface{ Timeout() bool }
+			if errors.As(err, &netErr) && netErr.Timeout() {
+				r.Log.Info("timeout error occurred, retrying", "key", key, "value", value)
+				time.Sleep(100 * time.Millisecond)
+				continue
+			}
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		// timeout error occurred 3 times
 		if err != nil {
 			return nil, err
 		}
+
 		result[key] = string(plaintext)
 	}
 	return result, nil

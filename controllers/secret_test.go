@@ -2,8 +2,11 @@ package controllers
 
 import (
 	"context"
+	"log"
 	"testing"
 
+	"github.com/go-logr/stdr"
+	"github.com/google/go-cmp/cmp"
 	batchv1alpha1 "github.com/kitagry/berglas-secret-controller/api/v1alpha1"
 	mockcontroller "github.com/kitagry/berglas-secret-controller/controllers/mock"
 	"go.uber.org/mock/gomock"
@@ -138,6 +141,60 @@ func TestBerglasSecretReconciler_isChanged(t *testing.T) {
 			}
 			if isChanged != tt.expectedBool {
 				t.Errorf("expected %v, but got %v", tt.expectedBool, isChanged)
+			}
+		})
+	}
+}
+
+func TestBerglasSecretReconciler_resolveBerglasSchemas(t *testing.T) {
+	tests := map[string]struct {
+		data                    map[string]string
+		createMockBerglasClient func(ctrl *gomock.Controller) *mockcontroller.MockberglasClient
+
+		expected    map[string]string
+		expectedErr error
+	}{
+		"Retry timeout error": {
+			data: map[string]string{
+				"some": "berglas://storage/secret",
+			},
+			createMockBerglasClient: func(ctrl *gomock.Controller) *mockcontroller.MockberglasClient {
+				controller := mockcontroller.NewMockberglasClient(ctrl)
+				first := controller.EXPECT().Resolve(gomock.Any(), "berglas://storage/secret").Return([]byte(""), context.DeadlineExceeded)
+				second := controller.EXPECT().Resolve(gomock.Any(), "berglas://storage/secret").Return([]byte("got"), nil)
+				gomock.InOrder(first, second)
+				return controller
+			},
+			expected: map[string]string{
+				"some": "got",
+			},
+			expectedErr: nil,
+		},
+		"Retry timeout error 3 times": {
+			data: map[string]string{
+				"some": "berglas://storage/secret",
+			},
+			createMockBerglasClient: func(ctrl *gomock.Controller) *mockcontroller.MockberglasClient {
+				controller := mockcontroller.NewMockberglasClient(ctrl)
+				controller.EXPECT().Resolve(gomock.Any(), "berglas://storage/secret").Return([]byte(""), context.DeadlineExceeded).Times(reconcileRetryCount)
+				return controller
+			},
+			expected:    nil,
+			expectedErr: context.DeadlineExceeded,
+		},
+	}
+
+	for n, tt := range tests {
+		t.Run(n, func(t *testing.T) {
+			berglasClient := tt.createMockBerglasClient(gomock.NewController(t))
+			reconciler := &BerglasSecretReconciler{Berglas: berglasClient, Log: stdr.New(log.Default())}
+
+			got, err := reconciler.resolveBerglasSchemas(context.Background(), tt.data)
+			if err != tt.expectedErr {
+				t.Errorf("expected %v, but got %v", tt.expectedErr, err)
+			}
+			if diff := cmp.Diff(tt.expected, got); diff != "" {
+				t.Errorf("resolveBerglasSchemas result diff (-expect, +got)\n%s", diff)
 			}
 		})
 	}
