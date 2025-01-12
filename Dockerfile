@@ -21,4 +21,7 @@ WORKDIR /
 COPY --from=builder /bin/manager .
 USER nonroot:nonroot
 
+LABEL org.opencontainers.image.source=https://github.com/kitagry/berglas-secret-controller
+LABEL org.opencontainers.image.description="CustomController of k8s for berglas secret"
+
 ENTRYPOINT ["/manager"]
