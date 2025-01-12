@@ -1,6 +1,6 @@
 domain: kitagry.github.io
 layout:
-- go.kubebuilder.io/v2
+- go.kubebuilder.io/v4
 projectName: berglas-secret-controller
 repo: github.com/kitagry/berglas-secret-controller
 resources:

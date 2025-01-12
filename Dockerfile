@@ -1,5 +1,5 @@
 # Build the manager binary
-FROM golang:1.23-bookworm as builder
+FROM golang:1.23-bookworm AS builder
 
 WORKDIR /workspace
 # cache deps before building and copying source so that we don't need to re-download as much
@@ -12,7 +12,7 @@ RUN --mount=type=cache,target=/go/pkg/mod/,sharing=locked \
 # Build
 RUN --mount=type=cache,target=/go/pkg/mod/ \
     --mount=type=bind,target=. \
-    CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -o /bin/manager .
+    CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -a -o /bin/manager ./cmd/
 
 # Use distroless as minimal base image to package the manager binary
 # Refer to https://github.com/GoogleContainerTools/distroless for more details
