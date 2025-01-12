@@ -1,4 +1,4 @@
-package controllers
+package controller
 
 import (
 	"context"
@@ -8,7 +8,7 @@ import (
 	"github.com/go-logr/stdr"
 	"github.com/google/go-cmp/cmp"
 	batchv1alpha1 "github.com/kitagry/berglas-secret-controller/api/v1alpha1"
-	mockcontroller "github.com/kitagry/berglas-secret-controller/controllers/mock"
+	mockcontroller "github.com/kitagry/berglas-secret-controller/internal/controller/mock"
 	"go.uber.org/mock/gomock"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

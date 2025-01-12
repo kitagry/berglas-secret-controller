@@ -32,7 +32,7 @@ import (
 	"github.com/blendle/zapdriver"
 	"github.com/go-logr/zapr"
 	batchv1alpha1 "github.com/kitagry/berglas-secret-controller/api/v1alpha1"
-	"github.com/kitagry/berglas-secret-controller/controllers"
+	berglascontroller "github.com/kitagry/berglas-secret-controller/internal/controller"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -89,9 +89,9 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err = (&controllers.BerglasSecretReconciler{
+	if err = (&berglascontroller.BerglasSecretReconciler{
 		Client:  mgr.GetClient(),
-		Log:     ctrl.Log.WithName("controllers").WithName("BerglasSecret"),
+		Log:     ctrl.Log.WithName("controller").WithName("BerglasSecret"),
 		Scheme:  mgr.GetScheme(),
 		Berglas: berglasClient,
 	}).SetupWithManager(ctx, mgr); err != nil {

@@ -1,4 +1,4 @@
-package controllers
+package controller
 
 import (
 	batchv1alpha1 "github.com/kitagry/berglas-secret-controller/api/v1alpha1"
