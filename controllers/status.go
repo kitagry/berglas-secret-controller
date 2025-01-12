@@ -9,23 +9,16 @@ func setCondition(status *batchv1alpha1.BerglasSecretStatus, newCondition batchv
 		status.Conditions = make([]batchv1alpha1.BerglasSecretCondition, 0, 1)
 	}
 
-	current := findCondition(status.Conditions, newCondition.Type)
-	if current != nil && current.Status == newCondition.Status && current.Reason == newCondition.Reason {
-		return
+	if len(status.Conditions) > 0 {
+		// Don't add duplicate conditions
+		lastCondition := status.Conditions[len(status.Conditions)-1]
+		if lastCondition.Status == newCondition.Status && lastCondition.Reason == newCondition.Reason {
+			return
+		}
 	}
 
 	newConditions := filterOutCondition(status.Conditions, newCondition.Type)
 	status.Conditions = append(newConditions, newCondition)
-}
-
-func findCondition(conditions []batchv1alpha1.BerglasSecretCondition, conditionType batchv1alpha1.BerglasSecretConditionType) *batchv1alpha1.BerglasSecretCondition {
-	for i := range conditions {
-		c := conditions[i]
-		if c.Type == conditionType {
-			return &c
-		}
-	}
-	return nil
 }
 
 func filterOutCondition(conditions []batchv1alpha1.BerglasSecretCondition, conditionType batchv1alpha1.BerglasSecretConditionType) []batchv1alpha1.BerglasSecretCondition {
