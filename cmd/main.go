@@ -31,7 +31,9 @@ import (
 
 	"github.com/blendle/zapdriver"
 	"github.com/go-logr/zapr"
+
 	batchv1alpha1 "github.com/kitagry/berglas-secret-controller/api/v1alpha1"
+	"github.com/kitagry/berglas-secret-controller/internal/berglas"
 	berglascontroller "github.com/kitagry/berglas-secret-controller/internal/controller"
 	// +kubebuilder:scaffold:imports
 )
@@ -83,7 +85,7 @@ func main() {
 	}
 
 	ctx := context.Background()
-	berglasClient, err := newBerglasClient(ctx)
+	berglasClient, err := berglas.New(ctx)
 	if err != nil {
 		setupLog.Error(err, "failed to create berglas client")
 		os.Exit(1)
