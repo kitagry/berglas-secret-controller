@@ -23,6 +23,7 @@ import (
 	"os"
 
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -31,9 +32,22 @@ import (
 
 	"github.com/blendle/zapdriver"
 	"github.com/go-logr/zapr"
+	"github.com/open-policy-agent/cert-controller/pkg/rotator"
+
 	batchv1alpha1 "github.com/kitagry/berglas-secret-controller/api/v1alpha1"
+	"github.com/kitagry/berglas-secret-controller/internal/berglas"
 	berglascontroller "github.com/kitagry/berglas-secret-controller/internal/controller"
 	// +kubebuilder:scaffold:imports
+)
+
+const (
+	secretName     = "berglas-secret-controller-cert"
+	caName         = "berglas-secret-controller-ca"
+	caOrganization = "berglas-secret-controller"
+
+	// validatingVwhName is the metadata.name of the BerglasSecretController ValidatingWebhookConfiguration.
+	validatingVwhName = "berglas-secret-validating-webhook-configuration"
+	mutatingVwhName   = "berglas-secret-mutating-webhook-configuration"
 )
 
 var (
@@ -51,10 +65,14 @@ func init() {
 func main() {
 	var metricsAddr string
 	var enableLeaderElection bool
+	var certDir string
+	var certServiceName string
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
 	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
+	flag.StringVar(&certDir, "cert-dir", "/certs", "The directory where certs are stored, defaults to /certs")
+	flag.StringVar(&certServiceName, "cert-service-name", "berglas-secret-controller-wehbook-service", "The service name used to generate the TLS cert's hostname. Defaults to berglas-secret-controller-webhook-service")
 	opts := zap.Options{
 		Development: true,
 	}
@@ -83,7 +101,7 @@ func main() {
 	}
 
 	ctx := context.Background()
-	berglasClient, err := newBerglasClient(ctx)
+	berglasClient, err := berglas.New(ctx)
 	if err != nil {
 		setupLog.Error(err, "failed to create berglas client")
 		os.Exit(1)
@@ -97,6 +115,41 @@ func main() {
 	}).SetupWithManager(ctx, mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "BerglasSecret")
 		os.Exit(1)
+	}
+	if os.Getenv("ENABLE_WEBHOOKS") != "false" {
+		setupLog.Info("setting up cert rotation")
+		webhooks := []rotator.WebhookInfo{
+			{
+				Name: validatingVwhName,
+				Type: rotator.Validating,
+			},
+			{
+				Name: mutatingVwhName,
+				Type: rotator.Mutating,
+			},
+		}
+		setupFinished := make(chan struct{})
+		defer close(setupFinished)
+		namespace := os.Getenv("POD_NAMESPACE")
+		if err := rotator.AddRotator(mgr, &rotator.CertRotator{
+			SecretKey: types.NamespacedName{
+				Namespace: namespace,
+				Name:      secretName,
+			},
+			CertDir:        certDir,
+			CAName:         caName,
+			CAOrganization: caOrganization,
+			DNSName:        fmt.Sprintf("%s.%s.svc", certServiceName, namespace),
+			IsReady:        setupFinished,
+			Webhooks:       webhooks,
+		}); err != nil {
+			setupLog.Error(err, "unable to set up cert rotation")
+			os.Exit(1)
+		}
+		if err = (&batchv1alpha1.BerglasSecret{}).SetupWebhookWithManager(mgr); err != nil {
+			setupLog.Error(err, "unable to create webhook", "webhook", "BerglasSecret")
+			os.Exit(1)
+		}
 	}
 	// +kubebuilder:scaffold:builder
 
