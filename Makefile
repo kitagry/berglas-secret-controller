@@ -51,6 +51,7 @@ manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and Cust
 generate: controller-gen mockgen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
 	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
 	$(MOCKGEN) -source=./internal/controller/berglassecret_controller.go -destination=./internal/controller/mock/berglas.go berglasClient
+	$(MOCKGEN) -source=./api/v1alpha1/berglassecret_webhook.go -destination=./api/v1alpha1/mock/berglas.go berglasClient
 
 .PHONY: fmt
 fmt: ## Run go fmt against code.

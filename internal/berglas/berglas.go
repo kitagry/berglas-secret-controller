@@ -1,4 +1,4 @@
-package main
+package berglas
 
 import (
 	"context"
@@ -11,13 +11,13 @@ import (
 	"github.com/GoogleCloudPlatform/berglas/pkg/berglas"
 )
 
-type berglasClient struct {
+type Client struct {
 	bClient    *berglas.Client
 	srManager  *secretmanager.Client
 	gcrManager *storage.Client
 }
 
-func newBerglasClient(ctx context.Context) (*berglasClient, error) {
+func New(ctx context.Context) (*Client, error) {
 	client, err := berglas.New(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create berglas client: %w", err)
@@ -33,18 +33,18 @@ func newBerglasClient(ctx context.Context) (*berglasClient, error) {
 		return nil, fmt.Errorf("failed to create storage client: %w", err)
 	}
 
-	return &berglasClient{
+	return &Client{
 		bClient:    client,
 		srManager:  srManager,
 		gcrManager: gcrManager,
 	}, nil
 }
 
-func (b *berglasClient) Resolve(ctx context.Context, s string) ([]byte, error) {
+func (b *Client) Resolve(ctx context.Context, s string) ([]byte, error) {
 	return b.bClient.Resolve(ctx, s)
 }
 
-func (b *berglasClient) Version(ctx context.Context, s string) (string, error) {
+func (b *Client) Version(ctx context.Context, s string) (string, error) {
 	ref, err := berglas.ParseReference(s)
 	if err != nil {
 		return "", fmt.Errorf("failed to parse reference %s: %w", s, err)
