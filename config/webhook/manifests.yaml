@@ -1,29 +1,29 @@
----
-apiVersion: admissionregistration.k8s.io/v1
-kind: MutatingWebhookConfiguration
-metadata:
-  name: berglas-secret-mutating-webhook-configuration
-webhooks:
-- admissionReviewVersions:
-  - v1
-  clientConfig:
-    service:
-      name: berglas-secret-webhook-service
-      namespace: system
-      path: /mutate-batch-kitagry-github-io-v1alpha1-berglassecret
-  failurePolicy: Fail
-  name: mberglassecret.kb.io
-  rules:
-  - apiGroups:
-    - batch.kitagry.github.io
-    apiVersions:
-    - v1alpha1
-    operations:
-    - CREATE
-    - UPDATE
-    resources:
-    - berglassecrets
-  sideEffects: None
+# ---
+# apiVersion: admissionregistration.k8s.io/v1
+# kind: MutatingWebhookConfiguration
+# metadata:
+#   name: berglas-secret-mutating-webhook-configuration
+# webhooks:
+# - admissionReviewVersions:
+#   - v1
+#   clientConfig:
+#     service:
+#       name: berglas-secret-webhook-service
+#       namespace: system
+#       path: /mutate-batch-kitagry-github-io-v1alpha1-berglassecret
+#   failurePolicy: Fail
+#   name: mberglassecret.kb.io
+#   rules:
+#   - apiGroups:
+#     - batch.kitagry.github.io
+#     apiVersions:
+#     - v1alpha1
+#     operations:
+#     - CREATE
+#     - UPDATE
+#     resources:
+#     - berglassecrets
+#   sideEffects: None
 ---
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingWebhookConfiguration
