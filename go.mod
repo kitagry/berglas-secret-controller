@@ -1,6 +1,8 @@
 module github.com/kitagry/berglas-secret-controller
 
 go 1.23
+toolchain go1.24.1
+
 require (
 	cloud.google.com/go/secretmanager v1.13.6
 	cloud.google.com/go/storage v1.43.0
@@ -13,7 +15,7 @@ require (
 	github.com/onsi/ginkgo/v2 v2.21.0
 	github.com/onsi/gomega v1.35.1
 	github.com/open-policy-agent/cert-controller v0.12.0
-	go.uber.org/mock v0.4.0
+	go.uber.org/mock v0.5.1
 	k8s.io/api v0.32.2
 	k8s.io/apimachinery v0.32.2
 	k8s.io/client-go v0.32.2
