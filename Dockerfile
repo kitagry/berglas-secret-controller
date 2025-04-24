@@ -1,5 +1,5 @@
 # Build the manager binary
-FROM golang:1.23-bookworm AS builder
+FROM golang:1.24-bookworm AS builder
 
 WORKDIR /workspace
 # cache deps before building and copying source so that we don't need to re-download as much
